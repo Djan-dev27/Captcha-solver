@@ -1,0 +1,44 @@
+#main.py
+
+import requests
+import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+
+API_KEY = 'use your 2captcha api key'
+
+def solve_captcha(site_key, url):
+    # Send the site key and URL to 2Captcha
+    captcha_id = requests.post(
+        f"http://2captcha.com/in.php?key={API_KEY}&method=userrecaptcha&googlekey={site_key}&pageurl={url}"
+    ).text.split('|')[1]
+
+    # Wait for the CAPTCHA to be solved
+    while True:
+        res = requests.get(f"http://2captcha.com/res.php?key={API_KEY}&action=get&id={captcha_id}").text
+        if res == 'CAPCHA_NOT_READY':
+            time.sleep(5)
+            continue
+        return res.split('|')[1]
+
+# Initialize the WebDriver
+driver = webdriver.Chrome()
+
+# Open the target website
+driver.get("https://elest.io/")
+
+# Extract the site key
+site_key = driver.find_element(By.CLASS_NAME, "g-recaptcha").get_attribute("data-sitekey")
+url = driver.current_url
+
+# Solve the CAPTCHA
+captcha_response = solve_captcha(site_key, url)
+
+# Enter the CAPTCHA response
+driver.execute_script(f'document.getElementById("g-recaptcha-response").innerHTML="{captcha_response}";')
+
+# Submit the form
+driver.find_element(By.ID, "submit_button").click()
+
+# Close the driver
+driver.quit()
